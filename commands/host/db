@@ -1,0 +1,22 @@
+#!/bin/bash
+
+## Description: Pull pantheon database.
+## Usage: db
+## Example: "ddev db"
+
+# Check if more than one table exists in database.
+# A single table is often a stale/incomplete state.
+
+TABLE_COUNT=$(echo "SHOW TABLES;" | ddev mysql --skip-column-names 2>/dev/null | wc -l | tr -d ' ')
+if [[ $TABLE_COUNT -le 1 || $1 == '-f' ]]; then
+  ddev auth ssh
+  ddev pull pantheon-db --skip-files -y
+
+  if [[ "$DDEV_PROJECT_TYPE" == "drupal" ]]; then
+    ddev composer install && ddev drush cr && ddev drush cim -y && ddev drush updb -y
+  fi
+else
+  echo
+  echo 'A database is already installed. Use "ddev db -f" to force.'
+  echo
+fi

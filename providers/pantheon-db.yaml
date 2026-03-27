@@ -1,0 +1,27 @@
+# Pantheon.io provider configuration.
+
+auth_command:
+  command: |
+    set -eu -o pipefail
+    if [ -z "${TERMINUS_MACHINE_TOKEN:-}" ]; then echo "Please make sure you have set TERMINUS_MACHINE_TOKEN in ~/.ddev/global_config.yaml" && exit 1; fi
+    if [ -z "${DDEV_PANTHEON_SITE:-}" ]; then echo "Please make sure you have set DDEV_PANTHEON_SITE via config.yaml or with '--environment=DDEV_PANTHEON_SITE=xxx'" && exit 1; fi
+    if [ -z "${DDEV_PANTHEON_ENVIRONMENT:-}" ]; then echo "Please make sure you have set DDEV_PANTHEON_ENVIRONMENT via config.yaml or with '--environment=DDEV_PANTHEON_ENVIRONMENT=xxx'" && exit 1; fi
+    terminus auth:login --machine-token="${TERMINUS_MACHINE_TOKEN}" || ( echo "terminus auth login failed, check your TERMINUS_MACHINE_TOKEN" && exit 1 )
+    terminus aliases 2>/dev/null
+
+db_pull_command:
+  command: |
+    # set -x   # You can enable bash debugging output by uncommenting
+    set -eu -o pipefail
+
+    if [ ${DDEV_PANTHEON_ENVIRONMENT} == 'live' ]; then
+      terminus ldb ${DDEV_PANTHEON_SITE} --overwrite --yes
+      # Gunzip works, but doesn't think it does, end silently.
+      gunzip -q $HOME/pantheon-local-copies/db/${DDEV_PANTHEON_SITE}-db.tgz | tar tvzf - &> /dev/null || true
+      mv $HOME/pantheon-local-copies/db/${DDEV_PANTHEON_SITE}-db.tar /var/www/html/.ddev/.downloads/db.sql
+    else
+      pushd /var/www/html/.ddev/.downloads >/dev/null
+      connection=$(terminus connection:info ${DDEV_PANTHEON_SITE}.${DDEV_PANTHEON_ENVIRONMENT} --field='MySQL Command')
+      connection=${connection/'mysql'/'mysqldump -v'}
+      eval "$connection --single-transaction --default-character-set=utf8mb4 --quick | gzip > db.sql.gz"
+    fi

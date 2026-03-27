@@ -1,0 +1,7 @@
+name: ddev-pantheon-db
+pre_install_actions: []
+project_files:
+  - providers/pantheon-db.yaml
+  - commands/host/db
+
+global_files: []
