@@ -1,5 +1,6 @@
 #!/bin/bash
 
+#ddev-generated
 ## Description: Pull pantheon database.
 ## Usage: db
 ## Example: "ddev db"
