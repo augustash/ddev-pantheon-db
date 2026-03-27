@@ -1,0 +1,9 @@
+{
+    "name": "augustash/ddev-pantheon-db",
+    "description": "DDEV add-on for fast Pantheon database pulls.",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": ">=7"
+    }
+}
