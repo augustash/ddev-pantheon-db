@@ -16,8 +16,7 @@ db_pull_command:
 
     if [ ${DDEV_PANTHEON_ENVIRONMENT} == 'live' ]; then
       terminus ldb ${DDEV_PANTHEON_SITE} --overwrite --yes
-      # Gunzip works, but doesn't think it does, end silently.
-      gunzip -q $HOME/pantheon-local-copies/db/${DDEV_PANTHEON_SITE}-db.tgz | tar tvzf - &> /dev/null || true
+      gunzip $HOME/pantheon-local-copies/db/${DDEV_PANTHEON_SITE}-db.tgz
       mv $HOME/pantheon-local-copies/db/${DDEV_PANTHEON_SITE}-db.tar /var/www/html/.ddev/.downloads/db.sql
     else
       pushd /var/www/html/.ddev/.downloads >/dev/null
