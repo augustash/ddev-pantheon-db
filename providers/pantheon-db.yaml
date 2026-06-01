@@ -6,7 +6,6 @@ auth_command:
     set -eu -o pipefail
     if [ -z "${TERMINUS_MACHINE_TOKEN:-}" ]; then echo "Please make sure you have set TERMINUS_MACHINE_TOKEN in ~/.ddev/global_config.yaml" && exit 1; fi
     if [ -z "${DDEV_PANTHEON_SITE:-}" ]; then echo "Please make sure you have set DDEV_PANTHEON_SITE via config.yaml or with '--environment=DDEV_PANTHEON_SITE=xxx'" && exit 1; fi
-    if [ -z "${DDEV_PANTHEON_ENVIRONMENT:-}" ]; then echo "Please make sure you have set DDEV_PANTHEON_ENVIRONMENT via config.yaml or with '--environment=DDEV_PANTHEON_ENVIRONMENT=xxx'" && exit 1; fi
     terminus auth:login --machine-token="${TERMINUS_MACHINE_TOKEN}" || ( echo "terminus auth login failed, check your TERMINUS_MACHINE_TOKEN" && exit 1 )
     terminus aliases 2>/dev/null
 
@@ -14,14 +13,14 @@ db_pull_command:
   command: |
     # set -x   # You can enable bash debugging output by uncommenting
     set -eu -o pipefail
-
-    if [ ${DDEV_PANTHEON_ENVIRONMENT} == 'live' ]; then
-      terminus ldb ${DDEV_PANTHEON_SITE} --overwrite --yes
-      gunzip $HOME/pantheon-local-copies/db/${DDEV_PANTHEON_SITE}-db.tgz
-      mv $HOME/pantheon-local-copies/db/${DDEV_PANTHEON_SITE}-db.tar /var/www/html/.ddev/.downloads/db.sql
-    else
-      pushd /var/www/html/.ddev/.downloads >/dev/null
-      connection=$(terminus connection:info ${DDEV_PANTHEON_SITE}.${DDEV_PANTHEON_ENVIRONMENT} --field='MySQL Command')
-      connection=${connection/'mysql'/'mysqldump -v'}
-      eval "$connection --single-transaction --default-character-set=utf8mb4 --quick | gzip > db.sql.gz"
+    # No environment default: refuse to pull rather than risk silently pulling
+    # production. The environment is normally set via config.yaml; override per
+    # pull with '--environment=DDEV_PANTHEON_ENVIRONMENT=dev' (or test, multidev).
+    if [ -z "${DDEV_PANTHEON_ENVIRONMENT:-}" ]; then
+      echo "DDEV_PANTHEON_ENVIRONMENT is not set. Set it in .ddev/config.yaml, or pass" >&2
+      echo "'--environment=DDEV_PANTHEON_ENVIRONMENT=<env>' to choose an environment." >&2
+      exit 1
     fi
+    pushd /var/www/html/.ddev/.downloads >/dev/null
+    terminus backup:create "${DDEV_PANTHEON_SITE}.${DDEV_PANTHEON_ENVIRONMENT}" --element=db --yes
+    terminus backup:get "${DDEV_PANTHEON_SITE}.${DDEV_PANTHEON_ENVIRONMENT}" --element=db --to=db.sql.gz

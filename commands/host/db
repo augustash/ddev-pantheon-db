@@ -2,22 +2,61 @@
 
 #ddev-generated
 ## Description: Pull pantheon database.
-## Usage: db
-## Example: "ddev db"
+## Usage: db [-f] [-e=ENV]
+## Example: "ddev db", "ddev db -f", "ddev db -f -e=test"
+## Flags: [{"Name":"force","Shorthand":"f","Type":"bool","Usage":"Force a fresh database pull even if a database is already present"},{"Name":"environment","Shorthand":"e","Type":"string","Usage":"Pantheon environment to pull from (overrides DDEV_PANTHEON_ENVIRONMENT)"}]
 
-# Check if more than one table exists in database.
-# A single table is often a stale/incomplete state.
+# Parse arguments (order-independent):
+#   -f / --force            force a fresh pull even if a database is present
+#   -e=ENV / -e ENV         pull from a specific Pantheon environment
+FORCE=false
+ENV_OVERRIDE=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -f|--force) FORCE=true; shift ;;
+    -e=*|--environment=*) ENV_OVERRIDE="${1#*=}"; shift ;;
+    -e|--environment)
+      if [[ -z "${2:-}" ]]; then echo "Missing value for $1 (use -e=<env>)"; exit 1; fi
+      ENV_OVERRIDE="$2"; shift 2 ;;
+    *) echo "Unknown argument: $1"; exit 1 ;;
+  esac
+done
 
+# A pull is needed when there is no usable database (0 or 1 tables is often a
+# stale/incomplete state) or when forced with -f. If a database is already
+# present and we are not forcing, there is nothing to do.
 TABLE_COUNT=$(echo "SHOW TABLES;" | ddev mysql --skip-column-names 2>/dev/null | wc -l | tr -d ' ')
-if [[ $TABLE_COUNT -le 1 || $1 == '-f' ]]; then
-  ddev auth ssh
-  ddev pull pantheon-db --skip-files -y
-
-  if [[ "$DDEV_PROJECT_TYPE" == "drupal" ]]; then
-    ddev composer install && ddev drush cr && ddev drush cim -y && ddev drush updb -y
-  fi
-else
+if [[ $TABLE_COUNT -gt 1 && $FORCE != true ]]; then
   echo
   echo 'A database is already installed. Use "ddev db -f" to force.'
   echo
+  exit 0
+fi
+
+# A pull is needed. Resolve the target environment: an explicit -e wins,
+# otherwise fall back to DDEV_PANTHEON_ENVIRONMENT as seen inside the web
+# container (this is a host command, so it cannot read web_environment directly).
+if [[ -n "$ENV_OVERRIDE" ]]; then
+  TARGET_ENV="$ENV_OVERRIDE"
+else
+  TARGET_ENV="$(ddev exec 'printf "%s" "${DDEV_PANTHEON_ENVIRONMENT:-}"' 2>/dev/null | tr -d '[:space:]')"
+fi
+
+# No environment configured (e.g. a brand-new site): do not pull. Defaulting to
+# any environment here risks silently pulling production into a fresh local.
+if [[ -z "$TARGET_ENV" ]]; then
+  echo
+  echo "No Pantheon environment configured (DDEV_PANTHEON_ENVIRONMENT is unset)."
+  echo "Set it in .ddev/config.yaml, or pull a specific environment with:"
+  echo "  ddev db -f -e=<env>   (e.g. dev, test, live, or a multidev name)"
+  echo "Skipping database pull."
+  echo
+  exit 0
+fi
+
+ddev auth ssh
+ddev pull pantheon-db --skip-files -y --environment=DDEV_PANTHEON_ENVIRONMENT="$TARGET_ENV"
+
+if [[ "$DDEV_PROJECT_TYPE" == "drupal" ]]; then
+  ddev composer install && ddev drush cr && ddev drush cim -y && ddev drush updb -y
 fi

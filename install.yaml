@@ -5,3 +5,11 @@ project_files:
   - commands/host/db
 
 global_files: []
+
+post_install_actions:
+  - |
+    #ddev-description:Show Pantheon DB pull usage
+    printf "ddev-pantheon-db pulls the Pantheon environment set in DDEV_PANTHEON_ENVIRONMENT.\n"
+    printf "Pull / refresh the database:        ddev db -f\n"
+    printf "Pull a specific environment once:   ddev db -f -e=test\n"
+    printf "(use dev, test, live, or a multidev name such as pr-123)\n"
