@@ -27,9 +27,13 @@ done
 # present and we are not forcing, there is nothing to do.
 TABLE_COUNT=$(echo "SHOW TABLES;" | ddev mysql --skip-column-names 2>/dev/null | wc -l | tr -d ' ')
 if [[ $TABLE_COUNT -gt 1 && $FORCE != true ]]; then
-  echo
-  echo 'A database is already installed. Use "ddev db -f" to force.'
-  echo
+  # Only surface the "nothing to do" notice on an interactive run. Invoked from
+  # the post-start hook (no TTY) it is just noise on every `ddev start`.
+  if [[ -t 1 ]]; then
+    echo
+    echo 'A database is already installed. Use "ddev db -f" to force.'
+    echo
+  fi
   exit 0
 fi
 
