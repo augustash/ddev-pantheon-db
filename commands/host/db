@@ -61,6 +61,6 @@ fi
 ddev auth ssh
 ddev pull pantheon-db --skip-files -y --environment=DDEV_PANTHEON_ENVIRONMENT="$TARGET_ENV"
 
-if [[ "$DDEV_PROJECT_TYPE" == "drupal" ]]; then
+if [[ "$DDEV_PROJECT_TYPE" == drupal* ]]; then
   ddev composer install && ddev drush cr && ddev drush cim -y && ddev drush updb -y
 fi
