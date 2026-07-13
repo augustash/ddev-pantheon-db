@@ -22,7 +22,7 @@ ddev db        # Pull database if local db is empty or has only one table
 ddev db -f     # Force a fresh database pull
 ```
 
-For Drupal projects, `ddev db` will also run `composer install`, `drush cr`, `drush cim`, and `drush updb` after the pull.
+For Drupal projects, `ddev db` will also run `composer install` and `drush deploy` after the pull (`updatedb` → `config:import` → `cache:rebuild` → `deploy:hook`, so a cross-version pull migrates the schema before the config/cache rebuilds).
 
 ### Pulling from a different environment
 
