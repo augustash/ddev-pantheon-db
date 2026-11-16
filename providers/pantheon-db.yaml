@@ -22,5 +22,7 @@ db_pull_command:
       exit 1
     fi
     pushd /var/www/html/.ddev/.downloads >/dev/null
-    terminus backup:create "${DDEV_PANTHEON_SITE}.${DDEV_PANTHEON_ENVIRONMENT}" --element=db --yes
+    # The backup only exists to be downloaded, so keep it a day. Terminus
+    # defaults to 365 and Pantheon now rejects anything over 180.
+    terminus backup:create "${DDEV_PANTHEON_SITE}.${DDEV_PANTHEON_ENVIRONMENT}" --element=db --keep-for=1 --yes
     terminus backup:get "${DDEV_PANTHEON_SITE}.${DDEV_PANTHEON_ENVIRONMENT}" --element=db --to=db.sql.gz
